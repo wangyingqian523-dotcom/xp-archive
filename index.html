@@ -315,6 +315,11 @@
     <aside id="tocSidebar" class="toc-sidebar">
         <div class="flex items-center justify-between mb-2">
             <div class="toc-title"><i class="fas fa-list-ul text-indigo-500"></i> 快速导航</div>
+            <div class="toc-nav" id="tocNav">
+            </div>
+            <div class="toc-overlay"></div><div class="toc-trigger" onclick="toggleToc()">
+☰
+</div>
             <button onclick="toggleToc(false)" class="text-slate-400 hover:text-slate-600">
                 <i class="fas fa-times"></i>
             </button>
@@ -387,8 +392,8 @@
     <input type="file" id="importInput" class="hidden" accept=".json" onchange="importJSON(event)">
 
     <script>
-        const GIST_ID = "4c6ea80edb304829d5ace8a7b7cc2f75.js";
-        const GITHUB_TOKEN = "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";
+        const GIST_ID = "4c6ea80edb304829d5ace8a7b7cc2f75";
+        const GITHUB_TOKEN = "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";
         const FILE_NAME = "xp_archive_data.json";
 
         async function loadCloudData() {
@@ -398,17 +403,22 @@
             );
 
             const data = await res.json();
+            const file = data.files[FILE_NAME];
+    
+            if(!file){
+                state.db = defaultData;
+                state.favorites = [];
+                render();
+                return;
+            }
 
-            const content =
-                data.files[FILE_NAME].content;
+            const parsed = JSON.parse(file.content);
 
-            const parsed = JSON.parse(content);
-
-            state.db = parsed.db || {};
+            state.db = parsed.db || defaultData;
             state.favorites = parsed.favorites || [];
-
             render();
         }
+
 
         async function saveCloudData() {
 
@@ -465,20 +475,7 @@
             }
         };
 
-        const file = data.files[FILE_NAME];
-
-        if(!file){
-            state.db = defaultData;
-            state.favorites = [];
-            render();
-            return;
-        }
-
-        const parsed = JSON.parse(file.content);
-
-        state.db = parsed.db || defaultData;
-        state.favorites = parsed.favorites || [];
-
+       
         window.onload = async () => {
 
             await loadCloudData();
@@ -621,12 +618,36 @@
         }
 
         // 切换目录显示
-        function toggleToc(show) {
-            state.isTocOpen = show;
-            document.getElementById('tocSidebar').classList.toggle('open', show);
-            document.getElementById('tocOverlay').classList.toggle('active', show);
+        function toggleToc() {
+
+            const sidebar = document.querySelector(".toc-sidebar");
+            const overlay = document.querySelector(".toc-overlay");
+        
+            const isOpen = sidebar.classList.contains("open");
+        
+            if (isOpen) {
+        
+                sidebar.classList.remove("open");
+                overlay.classList.remove("active");
+                state.isTocOpen = false;
+        
+            } else {
+        
+                sidebar.classList.add("open");
+                overlay.classList.add("active");
+                state.isTocOpen = true;
+        
+            }
+        
         }
 
+        document.addEventListener("click", function(e){
+
+            if(e.target.classList.contains("toc-overlay")){
+                toggleToc();
+            }
+        
+        });
         function renderTOC() {
             const toc = document.getElementById("toc");
             if (!toc) return;
@@ -887,6 +908,7 @@
     </script>
 </body>
 </html>
+
 
 
 
