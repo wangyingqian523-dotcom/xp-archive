@@ -465,13 +465,26 @@
             }
         };
 
+        const file = data.files[FILE_NAME];
+
+        if(!file){
+            state.db = defaultData;
+            state.favorites = [];
+            render();
+            return;
+        }
+
+        const parsed = JSON.parse(file.content);
+
+        state.db = parsed.db || defaultData;
+        state.favorites = parsed.favorites || [];
+
         window.onload = async () => {
 
             await loadCloudData();
 
             setupSearch();
-        };
-            
+
             document.addEventListener('contextmenu', e => {
                 const tagEl = e.target.closest('.tag-pill');
                 if (tagEl && !state.isEditMode) {
@@ -480,8 +493,8 @@
                 }
             });
 
-            // Active TOC Observer
             window.addEventListener('scroll', throttle(updateActiveToc, 100));
+
         };
 
         function loadData() {
