@@ -703,6 +703,7 @@
             else state.favorites.splice(index, 1);
             saveData();
             render();
+            await saveCloudData();
         }
 
         function handleTagClick(tag, event) {
@@ -744,9 +745,9 @@
                 }
         
             }
-        
-            saveData();
-            render();   // ⭐这里必须刷新
+
+            render();
+            await saveCloudData();⭐这里必须刷新
         }
         function handleEnter(e) { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } }
 
@@ -789,19 +790,22 @@
         function addNewCategory() {
             const name = "新分类 " + (Object.keys(state.db).length + 1);
             state.db[name] = {};
-            saveData(); render();
+            render();
+            await saveCloudData();
         }
 
         function addNewSubCategory(cat) {
             const name = "属性 " + (Object.keys(state.db[cat]).length + 1);
             state.db[cat][name] = [];
-            saveData(); render();
+            render();
+            await saveCloudData();
         }
 
         function addNewTag(cat, sub) {
             const name = "新建标签";
             state.db[cat][sub].push(name);
-            saveData(); render();
+            render();
+            await saveCloudData();
         }
 
         function deleteItem(type, cat, sub, tag, e) {
@@ -814,7 +818,8 @@
                 state.db[cat][sub] = state.db[cat][sub].filter(t => t !== tag);
                 state.favorites = state.favorites.filter(f => f !== tag);
             }
-            saveData(); render();
+            render();
+            await saveCloudData();
         }
 
         function setupSearch() {
@@ -919,6 +924,7 @@
     </script>
 </body>
 </html>
+
 
 
 
