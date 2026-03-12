@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XP Archive | 创作工作站</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --accent-color: #6366f1;
+            --fav-bg: #fff1f2;
+            --fav-border: #fecdd3;
+            --fav-text: #e11d48;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: #1e293b;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .glass-header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .xp-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+
+        .tag-pill {
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid #e2e8f0;
+            background: white;
+        }
+
+        .tag-pill:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border-color: var(--accent-color);
+        }
+
+        /* 收藏标签特殊样式 */
+        .tag-pill.favorite {
+            background: var(--fav-bg);
+            border-color: var(--fav-border);
+            color: var(--fav-text);
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(225, 29, 72, 0.1);
+        }
+
+        .tag-pill.favorite:hover {
+            border-color: #fb7185;
+            background: #fff5f5;
+        }
+
+        .ghost-class {
+            opacity: 0.2;
+            background: #e0e7ff;
+        }
+
+        .sequence-bar {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(16px);
+            color: white;
+            border-radius: 24px 24px 0 0;
+            box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 编辑模式下的动画 */
+        .edit-mode .xp-card {
+            border: 1px dashed var(--accent-color);
+            animation: breathe 3s infinite ease-in-out;
+        }
+
+        .edit-mode .tag-pill {
+            border: 1px dashed #cbd5e1;
+        }
+
+        @keyframes breathe {
+            0%, 100% { border-color: #e2e8f0; }
+            50% { border-color: var(--accent-color); }
+        }
+
+        /* 数量选择器小气泡 */
+        .count-picker {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            right: 0;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            flex-direction: row;
+            gap: 4px;
+            z-index: 60;
+        }
+        .count-picker.show { display: flex; }
+        .count-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: #94a3b8;
+            transition: all 0.2s;
+        }
+        .count-btn:hover { background: #334155; color: white; }
+    </style>
+</head>
+<body class="pb-40">
+
+    <!-- Header -->
+    <header class="glass-header px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                    <i class="fas fa-archive text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-2xl tracking-tight text-slate-800">XP Archive</h1>
+                    <p class="text-[10px] text-indigo-500 font-bold uppercase tracking-[0.2em]">Creative Station v2.6</p>
+                </div>
+            </div>
+
+            <div class="flex-1 max-w-lg mx-4">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="searchInput" placeholder="搜索关键词 | 右键收藏 | 编辑模式点击内容可修改..." 
+                        class="w-full pl-12 pr-4 py-3 bg-slate-100 border-2 border-transparent rounded-2xl focus:bg-white focus:border-indigo-500 transition-all outline-none text-sm shadow-inner">
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button onclick="toggleEditMode()" id="editModeBtn" class="px-5 py-2.5 rounded-xl bg-slate-200 text-slate-700 hover:bg-slate-300 transition-all flex items-center gap-2 font-semibold text-sm">
+                    <i class="fas fa-sliders-h"></i> <span id="editBtnText">编辑模式</span>
+                </button>
+                <div class="relative group">
+                    <button class="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors">
+                        <i class="fas fa-cog text-slate-500"></i>
+                    </button>
+                    <div class="absolute right-0 mt-2 w-56 bg-white border border-slate-100 rounded-2xl shadow-2xl hidden group-hover:block z-50 overflow-hidden">
+                        <button onclick="exportJSON()" class="w-full text-left px-5 py-3 hover:bg-slate-50 text-sm flex items-center gap-3"><i class="fas fa-file-export text-blue-500"></i>导出数据库 (JSON)</button>
+                        <button onclick="document.getElementById('importInput').click()" class="w-full text-left px-5 py-3 hover:bg-slate-50 text-sm flex items-center gap-3"><i class="fas fa-file-import text-green-500"></i>导入数据库 (JSON)</button>
+                        <div class="h-[1px] bg-slate-100"></div>
+                        <button onclick="resetData()" class="w-full text-left px-5 py-3 hover:bg-red-50 text-sm text-red-500 flex items-center gap-3"><i class="fas fa-eraser"></i>清空本地存储</button>
+                    </div>
+                </div>
+                <input type="file" id="importInput" class="hidden" accept=".json" onchange="importJSON(event)">
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-6 py-10">
+        <!-- Add Category (Visible only in edit mode) -->
+        <div id="addCategoryContainer" class="hidden mb-10">
+            <button onclick="addNewCategory()" class="w-full py-6 border-2 border-dashed border-indigo-200 rounded-3xl text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50/50 hover:border-indigo-400 transition-all flex items-center justify-center gap-3 font-bold text-lg">
+                <i class="fas fa-plus-circle"></i> 创建新的一级分类
+            </button>
+        </div>
+
+        <!-- Grid -->
+        <div id="mainGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- Categories will be injected here -->
+        </div>
+    </main>
+
+    <!-- Sequence Bar -->
+    <div id="sequenceBar" class="fixed bottom-0 left-0 right-0 sequence-bar px-8 py-6 transform translate-y-full transition-transform duration-500 z-50">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex items-center justify-between mb-5">
+                <div class="flex items-center gap-4">
+                    <div class="px-3 py-1 bg-indigo-500 rounded-md text-[10px] font-black uppercase tracking-widest text-white">DECONSTRUCTION</div>
+                    <span id="sequenceCount" class="text-indigo-300 font-mono text-lg">00</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <!-- 数量选择器 -->
+                        <div id="countPicker" class="count-picker">
+                            <button onclick="doRandom(1)" class="count-btn">1</button>
+                            <button onclick="doRandom(2)" class="count-btn">2</button>
+                            <button onclick="doRandom(3)" class="count-btn">3</button>
+                            <button onclick="doRandom(4)" class="count-btn">4</button>
+                            <button onclick="doRandom(5)" class="count-btn">5</button>
+                        </div>
+                        <button onclick="toggleCountPicker()" class="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2">
+                            <i class="fas fa-dice"></i> 随机生成
+                        </button>
+                    </div>
+                    <div class="w-[1px] h-4 bg-slate-700"></div>
+                    <button onclick="clearSequence()" class="text-sm text-slate-400 hover:text-red-400 transition-colors">
+                        清空队列
+                    </button>
+                    <button onclick="exportSequence()" class="bg-white text-slate-900 hover:bg-indigo-50 px-6 py-2 rounded-xl text-sm font-bold transition-all shadow-lg">
+                        导出 TXT 灵感
+                    </button>
+                </div>
+            </div>
+            <div id="sequenceContainer" class="flex gap-3 overflow-x-auto no-scrollbar py-2 min-h-[50px] items-center">
+                <p class="text-slate-500 text-sm italic">点击标签组合您的 XP 序列...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Overlay -->
+    <div id="modalOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl transform transition-all">
+            <h3 id="modalTitle" class="text-xl font-black text-slate-800 mb-2">输入内容</h3>
+            <p id="modalSub" class="text-xs text-slate-400 mb-6 font-medium">请确保名称简洁且具有辨识度</p>
+            <input type="text" id="modalInput" class="w-full bg-slate-100 border-2 border-transparent rounded-2xl px-5 py-3 mb-8 focus:bg-white focus:border-indigo-500 outline-none font-bold text-slate-700">
+            <div class="flex justify-end gap-3">
+                <button onclick="closeModal()" class="px-5 py-2.5 text-slate-400 font-bold hover:text-slate-600">取消</button>
+                <button id="modalConfirm" class="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 核心状态 ---
+        let state = {
+            db: {},
+            favorites: [],
+            sequence: [],
+            isEditMode: false
+        };
+
+        const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'xp-archive-v2-6';
+        const STORAGE_KEY = `xp_archive_v26_data_${APP_ID}`;
+
+        const defaultData = {
+            "核心架构": {
+                "攻受关系": ["1攻n受", "主导反转", "互攻", "年下支配"],
+                "基本情感": ["纯爱", "相爱相杀", "执念", "救赎"]
+            },
+            "世界观": {
+                "科技": ["全息游戏", "赛博朋克", "意识上传", "仿生人"],
+                "幻想": ["末日荒野", "西幻魔法", "修仙体系"]
+            },
+            "系统机制": {
+                "控制": ["催眠控制", "契约绑定", "精神操控", "记忆修改"]
+            }
+        };
+
+        // --- 初始化 ---
+        window.onload = () => {
+            loadData();
+            render();
+            initSearch();
+            document.addEventListener('contextmenu', e => {
+                if (e.target.closest('.tag-pill')) e.preventDefault();
+            });
+            // 点击外部关闭选择器
+            document.addEventListener('click', e => {
+                const picker = document.getElementById('countPicker');
+                if (!e.target.closest('.relative') && picker.classList.contains('show')) {
+                    picker.classList.remove('show');
+                }
+            });
+        };
+
+        function loadData() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                state.db = parsed.db || defaultData;
+                state.favorites = parsed.favorites || [];
+            } else {
+                state.db = defaultData;
+                state.favorites = ["催眠控制", "全息游戏"];
+                saveData();
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                db: state.db,
+                favorites: state.favorites
+            }));
+        }
+
+        // --- 渲染逻辑 ---
+        function render(filter = '') {
+            const grid = document.getElementById('mainGrid');
+            grid.innerHTML = '';
+
+            Object.entries(state.db).forEach(([catTitle, subCats]) => {
+                const catEl = document.createElement('div');
+                catEl.className = 'xp-card p-6 flex flex-col group';
+                catEl.dataset.id = catTitle;
+
+                let headerHTML = `
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="font-black text-xl text-slate-800 flex items-center gap-3">
+                            <span class="w-1.5 h-6 bg-indigo-500 rounded-full"></span>
+                            ${catTitle}
+                            ${state.isEditMode ? `<button onclick="editTitle('cat', '${catTitle}')" class="text-slate-300 hover:text-indigo-500 text-xs transition-colors"><i class="fas fa-pen"></i></button>` : ''}
+                        </h2>
+                        ${state.isEditMode ? `
+                            <div class="flex gap-3">
+                                <button onclick="deleteItem('cat', '${catTitle}')" class="text-slate-200 hover:text-red-500 transition-colors"><i class="fas fa-trash-alt"></i></button>
+                                <div class="handle cursor-grab text-slate-200 hover:text-slate-400"><i class="fas fa-grip-vertical"></i></div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+
+                let subHTML = `<div class="sub-container space-y-6" data-parent="${catTitle}">`;
+                
+                Object.entries(subCats).forEach(([subTitle, tags]) => {
+                    const filteredTags = tags.filter(t => t.toLowerCase().includes(filter.toLowerCase()));
+                    if (filter && filteredTags.length === 0 && !subTitle.toLowerCase().includes(filter.toLowerCase())) return;
+
+                    const sortedTags = [...filteredTags].sort((a, b) => {
+                        const favA = state.favorites.includes(a);
+                        const favB = state.favorites.includes(b);
+                        if (favA && !favB) return -1;
+                        if (!favA && favB) return 1;
+                        return 0;
+                    });
+
+                    subHTML += `
+                        <div class="sub-card bg-slate-50/50 p-4 rounded-2xl border border-slate-100" data-id="${subTitle}">
+                            <div class="flex justify-between items-center mb-3">
+                                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] flex items-center gap-2">
+                                    ${subTitle}
+                                    ${state.isEditMode ? `<button onclick="editTitle('sub', '${catTitle}', '${subTitle}')" class="hover:text-indigo-500"><i class="fas fa-pencil-alt scale-75"></i></button>` : ''}
+                                </h3>
+                                ${state.isEditMode ? `
+                                    <button onclick="deleteItem('sub', '${catTitle}', '${subTitle}')" class="text-slate-300 hover:text-red-400 text-xs"><i class="fas fa-minus-circle"></i></button>
+                                ` : ''}
+                            </div>
+                            <div class="tag-container flex flex-wrap gap-2.5" data-parent-cat="${catTitle}" data-parent-sub="${subTitle}">
+                                ${sortedTags.map(tag => {
+                                    const isFav = state.favorites.includes(tag);
+                                    return `
+                                        <div class="tag-pill px-4 py-2 rounded-xl text-sm font-medium ${isFav ? 'favorite' : 'text-slate-600'}" 
+                                             onclick="handleTagClick('${tag}', '${catTitle}', '${subTitle}', event)"
+                                             oncontextmenu="handleTagRightClick('${tag}', event)"
+                                             data-id="${tag}">
+                                            ${isFav ? '<i class="fas fa-heart text-[10px]"></i>' : (state.isEditMode ? `<i onclick="toggleFavorite('${tag}', event)" class="far fa-heart text-[10px] text-slate-300 hover:text-rose-500 cursor-pointer"></i>` : '')}
+                                            <span class="tag-text">${tag}</span>
+                                            ${state.isEditMode ? `<button onclick="deleteItem('tag', '${catTitle}', '${subTitle}', '${tag}')" class="ml-1 text-slate-300 hover:text-red-500"><i class="fas fa-times"></i></button>` : ''}
+                                        </div>
+                                    `;
+                                }).join('')}
+                                ${state.isEditMode ? `
+                                    <button onclick="addNewTag('${catTitle}', '${subTitle}')" class="px-4 py-2 border-2 border-dashed border-slate-200 text-slate-400 rounded-xl text-sm hover:border-indigo-300 hover:text-indigo-500 transition-all">+ Add</button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                if (state.isEditMode) {
+                    subHTML += `
+                        <button onclick="addNewSubCategory('${catTitle}')" class="w-full py-3 border-2 border-dashed border-slate-100 rounded-2xl text-slate-300 text-xs font-bold hover:text-indigo-400 hover:border-indigo-100 hover:bg-indigo-50/30 transition-all">+ 新增子分类</button>
+                    `;
+                }
+
+                subHTML += `</div>`;
+                catEl.innerHTML = headerHTML + subHTML;
+                grid.appendChild(catEl);
+            });
+
+            if (state.isEditMode) initDraggable();
+        }
+
+        // --- 拖拽与交互 ---
+        function initDraggable() {
+            new Sortable(document.getElementById('mainGrid'), { animation: 200, handle: '.handle', ghostClass: 'ghost-class', onEnd: updateOrder });
+            document.querySelectorAll('.sub-container').forEach(c => new Sortable(c, { animation: 200, draggable: '.sub-card', onEnd: updateOrder }));
+            document.querySelectorAll('.tag-container').forEach(c => new Sortable(c, { animation: 200, draggable: '.tag-pill', onEnd: updateOrder }));
+        }
+
+        function updateOrder() {
+            const newDb = {};
+            document.querySelectorAll('#mainGrid > div').forEach(catEl => {
+                const catId = catEl.dataset.id;
+                newDb[catId] = {};
+                catEl.querySelectorAll('.sub-card').forEach(subEl => {
+                    const subId = subEl.dataset.id;
+                    const tags = Array.from(subEl.querySelectorAll('.tag-pill')).map(t => t.dataset.id);
+                    newDb[catId][subId] = tags;
+                });
+            });
+            state.db = newDb;
+            saveData();
+        }
+
+        function handleTagClick(tag, cat, sub, event) {
+            // 在编辑模式下，点击文字部分触发编辑
+            if (state.isEditMode && event.target.closest('.tag-text')) {
+                editTagContent(cat, sub, tag);
+                return;
+            }
+            if (event.target.closest('button') || event.target.closest('.fa-heart')) return;
+            addToSequence(tag);
+        }
+
+        function handleTagRightClick(tag, event) {
+            event.preventDefault();
+            toggleFavorite(tag);
+        }
+
+        function toggleFavorite(tag, event) {
+            if (event) event.stopPropagation();
+            if (state.favorites.includes(tag)) {
+                state.favorites = state.favorites.filter(f => f !== tag);
+            } else {
+                state.favorites.push(tag);
+            }
+            saveData();
+            render(document.getElementById('searchInput').value);
+        }
+
+        function toggleEditMode() {
+            state.isEditMode = !state.isEditMode;
+            const btn = document.getElementById('editModeBtn');
+            const text = document.getElementById('editBtnText');
+            const addCat = document.getElementById('addCategoryContainer');
+
+            if (state.isEditMode) {
+                btn.classList.replace('bg-slate-200', 'bg-indigo-600');
+                btn.classList.replace('text-slate-700', 'text-white');
+                text.innerText = '退出编辑模式';
+                addCat.classList.remove('hidden');
+                document.body.classList.add('edit-mode');
+            } else {
+                btn.classList.replace('bg-indigo-600', 'bg-slate-200');
+                btn.classList.replace('text-white', 'text-slate-700');
+                text.innerText = '编辑模式';
+                addCat.classList.add('hidden');
+                document.body.classList.remove('edit-mode');
+            }
+            render(document.getElementById('searchInput').value);
+        }
+
+        // --- Sequence 逻辑 ---
+        function toggleCountPicker() {
+            document.getElementById('countPicker').classList.toggle('show');
+        }
+
+        function doRandom(count) {
+            const allTags = [];
+            Object.values(state.db).forEach(subs => Object.values(subs).forEach(tags => allTags.push(...tags)));
+            if (allTags.length === 0) return;
+            
+            // 随机选取指定数量
+            state.sequence = [...allTags].sort(() => 0.5 - Math.random()).slice(0, count);
+            
+            updateSequenceUI();
+            document.getElementById('sequenceBar').classList.remove('translate-y-full');
+            document.getElementById('countPicker').classList.remove('show');
+        }
+
+        function addToSequence(tag) {
+            state.sequence.push(tag);
+            updateSequenceUI();
+            document.getElementById('sequenceBar').classList.remove('translate-y-full');
+        }
+
+        function updateSequenceUI() {
+            const container = document.getElementById('sequenceContainer');
+            const count = document.getElementById('sequenceCount');
+            count.innerText = state.sequence.length.toString().padStart(2, '0');
+
+            if (state.sequence.length === 0) {
+                container.innerHTML = '<p class="text-slate-500 text-sm italic">点击标签组合您的 XP 序列...</p>';
+                return;
+            }
+
+            container.innerHTML = state.sequence.map((tag, idx) => `
+                <div class="flex-shrink-0 flex items-center gap-3 bg-indigo-500/20 border border-indigo-500/30 px-4 py-2 rounded-xl">
+                    <span class="text-sm font-bold text-indigo-100">${tag}</span>
+                    <button onclick="removeFromSequence(${idx})" class="text-indigo-400 hover:text-white transition-colors"><i class="fas fa-times-circle"></i></button>
+                    ${idx < state.sequence.length - 1 ? '<i class="fas fa-arrow-right text-[10px] text-indigo-700"></i>' : ''}
+                </div>
+            `).join('');
+            container.scrollLeft = container.scrollWidth;
+        }
+
+        function removeFromSequence(idx) {
+            state.sequence.splice(idx, 1);
+            updateSequenceUI();
+            if (state.sequence.length === 0) document.getElementById('sequenceBar').classList.add('translate-y-full');
+        }
+
+        function clearSequence() {
+            state.sequence = [];
+            updateSequenceUI();
+            document.getElementById('sequenceBar').classList.add('translate-y-full');
+        }
+
+        function exportSequence() {
+            if (state.sequence.length === 0) return;
+            const blob = new Blob([state.sequence.join(' + ')], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `XP_Archive_Prompt_${new Date().getTime()}.txt`;
+            a.click();
+        }
+
+        // --- 数据管理与 Modal ---
+        function openModal(title, callback, defaultVal = '') {
+            const modal = document.getElementById('modalOverlay');
+            document.getElementById('modalTitle').innerText = title;
+            const input = document.getElementById('modalInput');
+            input.value = defaultVal;
+            modal.classList.remove('hidden');
+            input.focus();
+            document.getElementById('modalConfirm').onclick = () => { callback(input.value.trim()); closeModal(); };
+        }
+
+        function closeModal() { document.getElementById('modalOverlay').classList.add('hidden'); }
+
+        function addNewCategory() { openModal('创建一级分类', val => { if (val && !state.db[val]) { state.db[val] = {}; saveData(); render(); } }); }
+        function addNewSubCategory(cat) { openModal(`在 ${cat} 下创建子分类`, val => { if (val && !state.db[cat][val]) { state.db[cat][val] = []; saveData(); render(); } }); }
+        function addNewTag(cat, sub) { openModal(`新增 Tag 到 ${sub}`, val => { if (val && !state.db[cat][sub].includes(val)) { state.db[cat][sub].push(val); saveData(); render(); } }); }
+
+        function editTagContent(cat, sub, oldTag) {
+            openModal(`修改标签名称`, newVal => {
+                if (!newVal || newVal === oldTag) return;
+                
+                // 更新数据库
+                const index = state.db[cat][sub].indexOf(oldTag);
+                if (index !== -1) {
+                    state.db[cat][sub][index] = newVal;
+                }
+
+                // 同步收藏状态
+                if (state.favorites.includes(oldTag)) {
+                    state.favorites = state.favorites.filter(f => f !== oldTag);
+                    state.favorites.push(newVal);
+                }
+
+                saveData();
+                render();
+            }, oldTag);
+        }
+
+        function editTitle(type, cat, sub = null) {
+            const old = type === 'cat' ? cat : sub;
+            openModal('重命名', val => {
+                if (!val || val === old) return;
+                if (type === 'cat') { state.db[val] = state.db[old]; delete state.db[old]; }
+                else { state.db[cat][val] = state.db[cat][old]; delete state.db[cat][old]; }
+                saveData(); render();
+            }, old);
+        }
+
+        function deleteItem(type, cat, sub, tag) {
+            if (!confirm('确定要移除吗？')) return;
+            if (type === 'cat') delete state.db[cat];
+            else if (type === 'sub') delete state.db[cat][sub];
+            else state.db[cat][sub] = state.db[cat][sub].filter(t => t !== tag);
+            saveData(); render();
+        }
+
+        function initSearch() { document.getElementById('searchInput').oninput = e => render(e.target.value); }
+        function exportJSON() {
+            const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `XP_Archive_Backup.json`;
+            a.click();
+        }
+        function importJSON(e) {
+            const reader = new FileReader();
+            reader.onload = ev => {
+                const data = JSON.parse(ev.target.result);
+                if (data.db) { state.db = data.db; state.favorites = data.favorites || []; saveData(); render(); }
+            };
+            reader.readAsText(e.target.files[0]);
+        }
+        function resetData() { if (confirm('彻底重置所有本地数据？')) { localStorage.removeItem(STORAGE_KEY); location.reload(); } }
+    </script>
+</body>
+</html>
