@@ -481,7 +481,7 @@
             await loadCloudData();
 
             setupSearch();
-            setInterval(saveData, 5000); // 每5秒自动保存
+
             document.addEventListener('contextmenu', e => {
                 const tagEl = e.target.closest('.tag-pill');
                 if (tagEl && !state.isEditMode) {
@@ -703,7 +703,6 @@
             else state.favorites.splice(index, 1);
             saveData();
             render();
-            await saveCloudData();
         }
 
         function handleTagClick(tag, event) {
@@ -714,41 +713,30 @@
         }
 
         function handleInlineEdit(el, type, cat, sub, tag) {
-        
             const newVal = el.innerText.trim();
             if (!newVal) { render(); return; }
-        
+
             if (type === 'cat') {
-        
                 if (newVal === cat) return;
                 state.db[newVal] = state.db[cat];
                 delete state.db[cat];
-        
             } else if (type === 'sub') {
-        
                 if (newVal === sub) return;
                 state.db[cat][newVal] = state.db[cat][sub];
                 delete state.db[cat][sub];
-        
             } else if (type === 'tag') {
-        
                 if (newVal === tag) return;
-        
                 const idx = state.db[cat][sub].indexOf(tag);
                 if (idx !== -1) {
-        
                     state.db[cat][sub][idx] = newVal;
-        
                     const favIdx = state.favorites.indexOf(tag);
                     if (favIdx !== -1) state.favorites[favIdx] = newVal;
-        
                 }
-        
             }
-
-            render();
-            await saveCloudData();⭐这里必须刷新
+            saveData();
+            if (type !== 'tag') render();
         }
+
         function handleEnter(e) { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } }
 
         function toggleEditMode() {
@@ -790,22 +778,19 @@
         function addNewCategory() {
             const name = "新分类 " + (Object.keys(state.db).length + 1);
             state.db[name] = {};
-            render();
-            await saveCloudData();
+            saveData(); render();
         }
 
         function addNewSubCategory(cat) {
             const name = "属性 " + (Object.keys(state.db[cat]).length + 1);
             state.db[cat][name] = [];
-            render();
-            await saveCloudData();
+            saveData(); render();
         }
 
         function addNewTag(cat, sub) {
             const name = "新建标签";
             state.db[cat][sub].push(name);
-            render();
-            await saveCloudData();
+            saveData(); render();
         }
 
         function deleteItem(type, cat, sub, tag, e) {
@@ -818,8 +803,7 @@
                 state.db[cat][sub] = state.db[cat][sub].filter(t => t !== tag);
                 state.favorites = state.favorites.filter(f => f !== tag);
             }
-            render();
-            await saveCloudData();
+            saveData(); render();
         }
 
         function setupSearch() {
@@ -924,9 +908,6 @@
     </script>
 </body>
 </html>
-
-
-
 
 
 
