@@ -481,7 +481,7 @@
             await loadCloudData();
 
             setupSearch();
-
+            setInterval(saveData, 5000); // 每5秒自动保存
             document.addEventListener('contextmenu', e => {
                 const tagEl = e.target.closest('.tag-pill');
                 if (tagEl && !state.isEditMode) {
@@ -713,30 +713,41 @@
         }
 
         function handleInlineEdit(el, type, cat, sub, tag) {
+        
             const newVal = el.innerText.trim();
             if (!newVal) { render(); return; }
-
+        
             if (type === 'cat') {
+        
                 if (newVal === cat) return;
                 state.db[newVal] = state.db[cat];
                 delete state.db[cat];
+        
             } else if (type === 'sub') {
+        
                 if (newVal === sub) return;
                 state.db[cat][newVal] = state.db[cat][sub];
                 delete state.db[cat][sub];
+        
             } else if (type === 'tag') {
+        
                 if (newVal === tag) return;
+        
                 const idx = state.db[cat][sub].indexOf(tag);
                 if (idx !== -1) {
+        
                     state.db[cat][sub][idx] = newVal;
+        
                     const favIdx = state.favorites.indexOf(tag);
                     if (favIdx !== -1) state.favorites[favIdx] = newVal;
+        
                 }
+        
             }
+        
             saveData();
-            if (type !== 'tag') render();
+            render();   // ⭐这里必须刷新
         }
-
         function handleEnter(e) { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } }
 
         function toggleEditMode() {
@@ -908,6 +919,7 @@
     </script>
 </body>
 </html>
+
 
 
 
